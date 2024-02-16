@@ -1,0 +1,287 @@
+<% if (timerInfo) { %>
+<div id="passwordHelpBlock" class="form-text">
+    Drying on progress.
+</div>
+
+<!-- The Counting Down Time Remaining should display below with the id="timeRemaining" -->
+<div class="form-text overflow-auto">
+    <div id="passwordHelpBlock" class="form-text">
+        Time Remaining:
+        <span id="timeRemaining"></span> 
+    </div>
+</div>
+<% } else { %>
+<div id="passwordHelpBlock" class="form-text">
+    Begin Drying.
+</div>
+<% } %>
+
+
+<div class="">
+	<ul class="box-info">
+		<button style="border: 0px;" onclick="changeBackground(this)">
+		<li class="group-a" style="background-color: #800000;">
+			<i class='bx bxs-car-battery'></i>
+			<span class="text">
+				<p class="text-a">Battery</p>
+			</span>
+		</li>
+		</button>
+
+		<button style="border: 0px;" onclick="changeBackground(this)">
+		<li class="group-a">
+			<i class='bx bxs-bolt' ></i>
+			<span class="text">
+				<p class="text-a">AC</p>
+			</span>
+		</li>
+		</button>
+
+			
+		<li class="group-a" style="height: 128px;">
+			<i class='bx bxs-hourglass-bottom' ></i>
+			<span class="text">
+				<!--<h3>$2543</h3>-->
+				<select class="input-b" style="margin-top: 20px;" onchange="toggleButton()">
+					<option value="automatic">Automatic</option>
+					<option value="manual">Manual</option>
+				</select>
+				<p class="text-b">Mode</p>
+			</span>
+		</li>
+	</ul>
+</div>
+
+
+<form id="finishDryingForm" action="/FinishDrying" method="POST">
+	<ul class="box-info">
+		<li style="overflow: hidden;">
+			<i class='bx bx-baguette' ></i>
+			<span class="text">
+				<% if (timerInfo) { %>
+					<p>Item</p>
+					<div class="overflow-y-hidden"><%= timerInfo.ItemName %></div>
+					<input type="text" value="<%= timerInfo.id %>" style="overflow: hidden;margin-top: 20px;"name="DryingID" id="name" class="input-b">
+					<input type="text" value="<%= timerInfo.ItemName %>" style="overflow: hidden;margin-top: 20px;"name="ItemName" id="name" class="input-b" hidden>
+				<% } else { %>
+					<!-- Handle the case where timerInfo is null -->
+					<p>Item</p>
+					<p>No item being dry.</p>
+				<% } %>
+			</span>
+		</li>
+		<li>
+			<i class='bx bxs-hourglass-top'></i>
+			<span class="text">
+				<% if (timerInfo) { %>
+					<p>Start Time</p>
+					<div class="overflow-y-hidden"><%= timerInfo.startTime %></div>
+					<input type="datetime" value="<%= timerInfo.startTime %>" style="overflow-x: auto; margin-top: 20px;" name="startTime" id="name" class="input-b" hidden>
+				<% } else { %>
+					<!-- Handle the case where timerInfo is null -->
+					<p>Start Time</p>
+					<p>No active timer.</p>
+				<% } %>
+			</span>
+		</li>
+		<li>
+			<i class='bx bxs-hourglass-bottom'></i>
+			<span class="text">
+			<% if (timerInfo) { %>
+				<p>End Time</p>
+				<div class="overflow-y-hidden"><%= timerInfo.endTime %></div>
+				<input type="datetime" value="<%= timerInfo.endTime %>" style="overflow-wrap: auto; margin-top: 20px;" name="endTime" id="name" class="input-b" hidden>
+			<% } else { %>
+				<!-- Handle the case where timerInfo is null -->
+				<p>End Time</p>
+				<p>No active timer.</p>
+			<% } %>
+			</span>
+		</li>
+		
+	</ul>
+	<div class="table-data">
+		<div class="todo" style="overflow: hidden;">
+			<div class="head">
+				<h3>Environment Data</h3>
+			</div>
+
+				<div class="formbold-input-group">
+					<label for="ItemQuantity" class="formbold-form-label">Item Quantity</label>
+					<% if (timerInfo) { %>
+					<input type="text" value="<%= timerInfo.ItemQuantity %>" name="ItemQuantity" id="ItemQuantity" class="input" readonly>
+					<% } else { %>
+					<input type="text" value="N/A" name="ItemQuantity" id="ItemQuantity" class="input" readonly>
+					<% } %>
+				</div>
+
+				<div class="formbold-input-group">
+					<label for="Humidity" class="formbold-form-label">Humidity</label>
+					<input type="text" value="N/A" name="Humidity" id="Humidity" class="input" readonly>
+				</div>
+		
+				<div class="formbold-input-group">
+					<label for="Temperature" class="formbold-form-label">Temperature</label>
+					<input type="text" value="N/A" name="Temperature" id="Temperature" class="input" readonly>
+				</div>
+
+				<div class="formbold-input-group">
+					<label for="LightIntensity" class="formbold-form-label">Light Intensity</label>
+					<input type="text" value="N/A" name="LightIntensity" id="LightIntensity" class="input" readonly>
+				</div>
+		</div>
+
+		<!-- BATTERY POWER INFORMATION -->
+		<div class="todo" style="overflow: hidden;">
+			<div class="head">
+				<h3>Battery Information</h3>
+			</div>
+
+			<div class="formbold-input-group">
+				<label for="BattPower" class="formbold-form-label">Batt. Power Source</label>
+				<input type="text" value="N/A" name="BattPower" id="BattPower" class="input" readonly>
+				</div>
+		
+				<div class="formbold-input-group">
+				<label for="BattPowerUsage" class="formbold-form-label">Power Usage Over Time</label>
+				<input type="text" value="N/A" name="BattPowerUsage" id="BattPowerUsage" class="input" readonly>
+				</div>
+		
+				<div class="formbold-input-group">
+				<label for="BattPowerVoltage" class="formbold-form-label">Present Voltage Read</label>
+				<input type="text" value="N/A" name="BattPowerVoltage" id="BattPowerVoltage" class="input" readonly>
+				</div>
+
+				<div class="formbold-input-group">
+				<label for="BattPowerCurrent" class="formbold-form-label">Present Current Read</label>
+				<input type="text" value="N/A" name="BattPowerCurrent" id="BattPowerCurrent" class="input" readonly>
+				</div>
+		</div>
+
+		<!-- AC POWER INFORMATION -->
+		<div class="todo" style="overflow: hidden;">
+			<div class="head">
+				<h3>AC Information</h3>
+			</div>
+
+			<div class="formbold-input-group">
+				<label for="ACPower" class="formbold-form-label">AC Power Source</label>
+				<input type="text" value="N/A" name="ACPower" id="ACPower" class="input" readonly>
+			</div>
+
+			<div class="formbold-input-group">
+				<label for="ACPowerUsage" class="formbold-form-label">Power Usage Over Time</label>
+				<input type="text" value="N/A" name="ACPowerUsage" id="ACPowerUsage" class="input" readonly>
+			</div>
+
+			<div class="formbold-input-group">
+				<label for="ACPowerVoltage" class="formbold-form-label">Present Voltage Read</label>
+				<input type="text" value="N/A" name="ACPowerVoltage" id="ACPowerVoltage" class="input" readonly>
+			</div>
+
+			<div class="formbold-input-group">
+				<label for="ACPowerCurrent" class="formbold-form-label">Present Current Read</label>
+				<input type="text" value="N/A" name="ACPowerCurrent" id="ACPowerCurrent" class="input" readonly>
+			</div>
+		</div>
+	</div>
+</form>
+
+<!-- Modal -->
+
+
+<script>
+    function updateDuration() {
+        var userDateTime = document.getElementById('duration').value;
+
+        if (!userDateTime) {
+            var durationDisplay = document.getElementById('durationDisplay');
+            durationDisplay.innerHTML = '<strong>Duration:</strong>';
+            return;
+        }
+
+        var userDate = new Date(userDateTime);
+        var currentDate = new Date();
+        var durationMillis = userDate - currentDate;
+        var days = Math.floor(durationMillis / (24 * 60 * 60 * 1000));
+        var hours = Math.floor((durationMillis % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+        var minutes = Math.floor((durationMillis % (60 * 60 * 1000)) / (60 * 1000));
+        var seconds = Math.floor((durationMillis % (60 * 1000)) / 1000);
+
+        var durationDisplay = document.getElementById('durationDisplay');
+        durationDisplay.innerHTML = `<strong>Time Duration:</strong> ${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+
+        // Fetch end time from MongoDB asynchronously
+        fetchEndTimeFromMongo().then((endTime) => {
+            updateRemainingTime(new Date(endTime));
+        });
+    }
+
+    function handleModeChange() {
+        var modeSelect = document.getElementById("modeSelect");
+        var powerSelection = document.getElementById("powerSelection");
+
+        if (modeSelect.value === "manual") {
+            powerSelection.style.display = "block";
+        } else {
+            powerSelection.style.display = "none";
+        }
+    }
+	
+	function updateRemainingTime(endTime) {
+    var intervalId = setInterval(() => {
+      var currentDate = new Date();
+      var remainingMillis = endTime - currentDate;
+
+      if (remainingMillis <= 0) {
+        // Timer has ended, submit the form
+        document.getElementById('finishDryingForm').submit();
+        clearInterval(intervalId); // Stop the interval
+      } else {
+        // Calculate and display remaining time
+        var days = Math.floor(remainingMillis / (24 * 60 * 60 * 1000));
+        var hours = Math.floor((remainingMillis % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+        var minutes = Math.floor((remainingMillis % (60 * 60 * 1000)) / (60 * 1000));
+        var seconds = Math.floor((remainingMillis % (60 * 1000)) / 1000);
+
+        var timeRemainingElement = document.getElementById('timeRemaining');
+        timeRemainingElement.innerHTML = `${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+      }
+    }, 1000);
+  }
+
+  window.onload = function () {
+    // Extract endTime from timerInfo and convert it to a Date object
+    var endTimeString = '<%= timerInfo ? timerInfo.endTime : "" %>';
+
+    // Check if endTimeString is not empty before creating a Date object
+    if (endTimeString) {
+      var endTime = new Date(endTimeString);
+
+      // Initialize countdown timer with the extracted endTime
+      updateRemainingTime(endTime);
+    }
+  };
+</script>
+
+<script>
+	function changeBackground(clickedButton) {
+		// Reset background color of all buttons
+		var buttons = document.querySelectorAll('.group-a');
+		buttons.forEach(function (button) {
+			button.style.backgroundColor = '';
+		});
+
+		// Set background color of the clicked button
+		var clickedLi = clickedButton.querySelector('.group-a');
+		clickedLi.style.backgroundColor = '#800000'; // Change this to the desired background color
+
+		function toggleButton() {
+            var modeSelect = document.getElementById('modeSelect');
+            var acButton = document.getElementById('acButton');
+
+            // Enable or disable the AC button based on the selected mode
+            acButton.disabled = (modeSelect.value === 'automatic');
+        }
+	}
+</script>
