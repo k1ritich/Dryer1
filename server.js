@@ -46,12 +46,12 @@ const mqttOptions = {
 
 const httpServer = http.createServer(app);
 const mqttClient = mqtt.connect(mqttOptions);
-const port = 8080;
+const port = 80;
 const io = require('socket.io')(httpServer);
 const WebURL = 'dryer.pages.dev'; //const WebURL = '192.168.60.95';
 
 // Connect to MongoDB
-mongoose.connect(process.env.DATABASE_URL)
+mongoose.connect(process.env.DATABASE_URI)
   .then((result) => {
       console.log(`Connected to database successfully.`);
   })
