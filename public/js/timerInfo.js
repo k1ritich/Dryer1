@@ -10,7 +10,7 @@ function updateRemainingTime(endTime) {
 
       // Timer has ended, submit the form
       // document.getElementById('finishDryingForm').submit(); remove comment to automatically submit the form
-      // window.location.href = '/Dashboard';
+      window.location.href = '/Dashboard';
       clearInterval(intervalId); // Stop the interval
     } else {
       // Calculate and display remaining time

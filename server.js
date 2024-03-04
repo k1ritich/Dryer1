@@ -48,7 +48,7 @@ const httpServer = http.createServer(app);
 const mqttClient = mqtt.connect(mqttOptions);
 const port = 3000;
 const io = require('socket.io')(httpServer);
-const WebURL = '192.168.2.32'; //const WebURL = '192.168.60.95';
+const WebURL = '192.168.2.20'; //const WebURL = '192.168.60.95';
 
 // Connect to MongoDB
 mongoose.connect(process.env.DATABASE_URL)
@@ -95,30 +95,11 @@ mqttClient.on('connect', () => {
   });
 
   const topic = [
-      "MYMQTT/TemperatureTopic",
-      "MYMQTT/TemperatureTopic0",
-      "MYMQTT/TemperatureTopic1",
-      "MYMQTT/TemperatureTopic2",
-      "MYMQTT/TemperatureTopic3",
-      "MYMQTT/TemperatureTopic4",
-      "MYMQTT/TemperatureTopic5",
-      "MYMQTT/TemperatureTopic6",
-      "MYMQTT/HumidityTopic",
-      "MYMQTT/HumidityTopic0",
-      "MYMQTT/HumidityTopic1",
-      "MYMQTT/HumidityTopic2",
-      "MYMQTT/HumidityTopic3",
-      "MYMQTT/HumidityTopic4",
-      "MYMQTT/HumidityTopic5",
-      "MYMQTT/HumidityTopic6",
-      "MYMQTT/LightTopic",
-      "MYMQTT/VoltageTopic",
-      "MYMQTT/SourceTopic",
-      "MYMQTT/SourceModeTopic",
-      "MYMQTT/FinishDryingTopic",
-      "MYMQTT/ACVoltageTopic",
-      "MYMQTT/ACCurrentTopic",
-      "MYMQTT/ACPowerTopic"
+      "MYMQTTDRYER/TimerRequest",
+      "MYMQTTDRYER/FinishData",
+      "MYMQTT/InitialACPowerTopic",
+      "MYMQTT/CurrentACPowerTopic",
+      'MYMQTT/DehumidifierSourceTopic'
   ];
 
 const subscribePromises = topic.map(currentTopic => {
@@ -163,27 +144,131 @@ Promise.all(subscribePromises)
     { name: 'AboutUs', subtitle: 'About Us' }
   ];
 
-mqttClient.on('message', (topic, message) => {
-  const payload = { topic, message: message.toString() };
-  // console.log(`Received message on topic '${topic}': ${payload.message}`);
+  mqttClient.on('message', async (topic, message) => {
+    const payload = { topic, message: message.toString() };
+    console.log(`Received message on topic '${topic}': ${payload.message}`);
+    if (!payload.message.trim()) {
+      console.log('Hello World');
+      return;
+    }
+    if (payload.topic === 'MYMQTTDRYER/TimerRequest') {
+      const activeTimer = await StartDryingModel.findOne({ _id: payload.message }).exec();
+      if (activeTimer) {
+        const endTimeMillis = activeTimer.endTime.getTime();
+        const currentTimeMillis = Date.now();
+        const diffMillis = endTimeMillis - currentTimeMillis;
+        mqttClient.publish('MYMQTTDRYER/Millis', diffMillis.toString());
+        console.log(`Time difference in milliseconds: ${diffMillis}`);
 
-  // Emit the payload to all connected clients
-  io.emit('mqttMessage', payload);
-});
-
-io.on('connection', (socket) => {
-  console.log('A user connected');
-
-  // Handle disconnection
-  socket.on('disconnect', () => {
-    console.log('User disconnected');
+        if (diffMillis <= 0) {
+          mqttClient.publish('MYMQTTDRYER/FinishData',"", { qos: 2, retain: true }, (err) => {
+            if (err) {
+              console.error('Error publishing message:', err);
+            } else {
+              console.log('Message published successfully');
+            }
+          });
+        }
+      }
+    } else if (payload.topic === 'MYMQTTDRYER/FinishData') {
+      try {
+        const jsonData = JSON.parse(payload.message);
+        console.log('Received JSON data:', jsonData);
+        // Map JSON keys to match SensorDataSchema
+          const mappedData = {
+          UserName: jsonData.UserName,
+          UserID: jsonData.UserID,
+          Drying_id: jsonData._id, // Assuming _id in JSON corresponds to Drying_id
+          UserProfPic: jsonData.UserProfPic,
+          DryingTitle: jsonData.DryingTitle,
+          ItemName: jsonData.ItemName,
+          ItemQuantity: jsonData.ItemQuantity,
+          Status: jsonData.Status,
+          startTime: new Date(jsonData.startTime),
+          endTime: new Date(jsonData.endTime),
+          stopTime: new Date(),
+          TimeMode: jsonData.TimeMode,
+          Temperature: jsonData.Temperature.map(Number),
+          Humidity: jsonData.Humidity.map(Number),
+          SubmitBy: jsonData.SubmitBy
+        };
+        const sensorData = new SensorDataModel(mappedData);
+        await sensorData.save();
+        mqttClient.publish('MYMQTTDRYER/FinishData',"", { qos: 2, retain: true }, (err) => {
+          if (err) {
+            console.error('Error publishing message:', err);
+          } else {
+            console.log('Message published successfully');
+          }
+        });
+        console.log('Data saved to MongoDB');
+        const updateStartDrying = await StartDryingModel.findById(jsonData._id);
+        if (!updateStartDrying) {
+          return res.status(404).send('User not found');
+        } else {
+          updateStartDrying.Status = "Complete";
+          await updateStartDrying.save();
+          console.log("Successfully Updated The Drying")
+        }
+        const PowerStates = {
+          HumidifierState: "OFF",
+          PowerState: "OFF",
+          OperationState: "OFF",
+        };
+        mqttClient.publish('MYMQTTDRYER/StoreStateTopic',JSON.stringify(PowerStates), { qos: 2, retain: true }, (err) => {
+          if (err) {
+            console.error('Error publishing message:', err);
+          } else {
+            console.log('Message published successfully');
+          }
+        });
+      } catch (error) {
+        console.error('Error parsing JSON or saving to MongoDB:', error);
+      }
+    }
+    // Emit the payload to all connected clients
+    io.emit('mqttMessage', payload);
   });
+  
+  io.on('connection', (socket) => {
+    console.log('A user connected');
+  
+    // Handle disconnection
+    socket.on('disconnect', () => {
+      console.log('User disconnected');
+    });
 
-  // Handle the 'publishMessage' event
-  socket.on('publishMessage', (payload) => {
-    mqttClient.publish(payload.topic, payload.message);
+          
+      // Unsubscribe from the topics
+      const topics1 = ['MYMQTTDRYER/TemperatureHumidityTopic', 'MYMQTTDRYER/StoreStateTopic','MYMQTTDRYER/RecordPowerTopic']; // Add your subscribed topics here
+      topics1.forEach((topic) => {
+        mqttClient.unsubscribe(topic, (err) => {
+          if (err) {
+            console.error('Error unsubscribing from topic:', err);
+          } else {
+            console.log(`Unsubscribed from topic: ${topic}`);
+          }
+        });
+      });
+
+    // Unsubscribe from the topics
+    const topics = ['MYMQTTDRYER/TemperatureHumidityTopic', 'MYMQTTDRYER/StoreStateTopic','MYMQTTDRYER/RecordPowerTopic']; // Add your subscribed topics here
+    topics.forEach((topic) => {
+      mqttClient.subscribe(topic, (err) => {
+        if (err) {
+          console.error('Error subscribing from topic:', err);
+        } else {
+          console.log(`Subscribed from topic: ${topic}`);
+        }
+      });
+    });
+  
+    // Handle the 'publishMessage' event
+    socket.on('publishMessage', (payload) => {
+      mqttClient.publish(payload.topic, payload.message);
+    });
   });
-});
+  
 
 // Set up Multer for handling file uploads
 const storage = multer.diskStorage({
@@ -289,11 +374,8 @@ tabs.forEach(tab => {
         req.session.success = null;
 
         if (tab.name === 'Dashboard') {
-          const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+          const activeTimers = await StartDryingModel.find({ Status: "On-going" }).exec();
           const firstActiveTimer = activeTimers.length > 0 ? activeTimers[0] : null;
-          if (activeTimers.length != 0 ) {
-            mqttClient.publish('MYMQTT/RequestAllStateValue', "REQUEST_ALL");
-          }
           const timerInfo = firstActiveTimer
             ? { ItemQuantity:firstActiveTimer.ItemQuantity, ItemName: firstActiveTimer.ItemName, id: firstActiveTimer._id, startTime: firstActiveTimer.startTime, endTime: firstActiveTimer.endTime }
             : null;
@@ -334,7 +416,8 @@ app.post('/DryingDetails', (req, res) => {
 
 app.post('/StartDrying', async (req, res) => {
   try {
-    const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    // const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    const activeTimers = await StartDryingModel.find({ Status: "On-going" }).exec();
 
     activeTimers.forEach(timer => {
       console.log("Active Timer End Time: " + timer.endTime);
@@ -346,9 +429,11 @@ app.post('/StartDrying', async (req, res) => {
     } else {
       // No active timer, proceed with starting a new timer
       console.log(req.body);
+      // mqttClient.publish('MYMQTTDRYER/DryingData', JSON.stringify(req.body));
       const itemName = req.body.ItemName;
       const ItemQuantity = req.body.ItemQuantity;
       const modeSelect = req.body.modeSelect;
+      const TimeMode = req.body.TimeMode;
       const sourceSelect = req.body.powerSourceSelect;
       const Status = req.body.status;
       const DryingTitle = req.body.DryingTitle;
@@ -381,29 +466,74 @@ app.post('/StartDrying', async (req, res) => {
         console.log("currentTime: " + currentTime);
         console.log("UserMillis: " + userDateInMillis);
 
-        // Create a new StartDryingModel instance
-        const timer = new StartDryingModel({
-          UserName: req.session.user.FullName,
-          UserID: req.session.user._id,
-          UserProfPic: req.session.user.ProfileImage,
-          DryingTitle: DryingTitle,
-          ItemName: itemName,
-          ItemQuantity: ItemQuantity,
-          Status: Status,
-          startTime: currentTime,
-          endTime: userDate,
+        if (TimeMode === "NOTIMER") {
+          console.log("You Reach Me");
+          // Create a new StartDryingModel instance
+          const timer = new StartDryingModel({
+            UserName: req.session.user.FullName,
+            UserID: req.session.user._id,
+            UserProfPic: req.session.user.ProfileImage,
+            DryingTitle: DryingTitle,
+            ItemName: itemName,
+            ItemQuantity: ItemQuantity,
+            TimeMode: TimeMode,
+            Status: Status,
+            startTime: currentTime,
+            endTime: null,
+          });
+          // Save the timer to the database
+          await timer.save();
+
+        } else if (TimeMode === "TIMER") {
+          // Create a new StartDryingModel instance
+          const timer = new StartDryingModel({
+            UserName: req.session.user.FullName,
+            UserID: req.session.user._id,
+            UserProfPic: req.session.user.ProfileImage,
+            DryingTitle: DryingTitle,
+            ItemName: itemName,
+            ItemQuantity: ItemQuantity,
+            TimeMode: TimeMode,
+            Status: Status,
+            startTime: currentTime,
+            endTime: userDate,
+          });
+          // Save the timer to the database
+          await timer.save();
+        }
+
+        const newTimerMQTT = await StartDryingModel.findOne({ Status: "On-going" }).exec();
+        
+        const PowerStates = {
+          HumidifierState: "ON",
+          PowerState: req.body.powerSourceSelect,
+          OperationState: req.body.modeSelect,
+        };
+        mqttClient.publish('MYMQTTDRYER/DryingData', JSON.stringify(newTimerMQTT), { qos: 2, retain: true }, (err) => {
+          if (err) {
+            console.error('Error publishing message:', err);
+          } else {
+            console.log('Message published successfully');
+            
+            // Add a 1-second delay before publishing the next message
+            setTimeout(() => {
+              mqttClient.publish('MYMQTTDRYER/StoreStateTopic', JSON.stringify(PowerStates), { qos: 2, retain: true }, (err) => {
+                if (err) {
+                  console.error('Error publishing message:', err);
+                } else {
+                  console.log('Message published successfully');
+                }
+              });
+            }, 1000); // 1000 milliseconds = 1 second
+          }
         });
-
-        // Save the timer to the database
-        await timer.save();
-
-        // Redirect to the dashboard after saving the timer
-        const newTimer = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+        const newTimer = await StartDryingModel.find({ Status: "On-going" }).exec();
         const NewActiveTimer = newTimer.length > 0 ? newTimer[0] : null;
         console.log(NewActiveTimer._id);
         ID = NewActiveTimer._id
 
         const state = new RelayStatesModel({
+          DehumidifierRelayState: 'ON',
           DryingID: ID,
           DryingMode: modeSelect,
           RelayState: sourceSelect,
@@ -422,18 +552,45 @@ app.post('/StartDrying', async (req, res) => {
 
 app.post('/FinishDrying', async (req, res) => {
   console.log(req.body);
-  const finish = new DryingDetailsModel(req.body);
-  mqttClient.publish('MYMQTT/SwitchSourceModeTopic', "OFF");
-  
-  await finish.save()
-    .then(() => {
-      res.redirect('/Dashboard');
-    })
-    .catch((err) => {
-      console.log(err);
-    });
-});
+  const Temperature = [];
+  const Humidity = [];
+  for (let i = 0; i < 13; i++) {
+    Temperature[i] = req.body[`Temperature${i}`];
+    Humidity[i] = req.body[`Humidity${i}`];
+  }
+  console.log(Temperature);
+  console.log(Humidity);
 
+  const activeTimer = await StartDryingModel.findOne({ _id: req.body.DryingID }).exec();
+  if (activeTimer) {
+    const mappedData = {
+      UserName: activeTimer.UserName,
+      UserID: activeTimer.UserID,
+      Drying_id: activeTimer._id, // Assuming _id in JSON corresponds to Drying_id
+      UserProfPic: activeTimer.UserProfPic,
+      DryingTitle: activeTimer.DryingTitle,
+      ItemName: activeTimer.ItemName,
+      ItemQuantity: activeTimer.ItemQuantity,
+      Status: "Complete",
+      startTime: activeTimer.startTime,
+      endTime: activeTimer.endTime,
+      stopTime: new Date(),
+      TimeMode: activeTimer.TimeMode,
+      Temperature: Temperature,
+      Humidity: Humidity,
+      SubmitBy: req.session.user.FullName
+    };
+    console.log(mappedData);
+
+    const sensorData = new SensorDataModel(mappedData);
+    await sensorData.save();
+    console.log("Sensor data saved successfully!");
+  } else {
+    console.log("Active timer not found.");
+  }
+
+  res.send('Finished drying data received');
+});
 app.post('/SaveData', async (req, res) => {
   try {
     console.log(req.body);
@@ -450,7 +607,8 @@ app.post('/SaveData', async (req, res) => {
 
 app.get('/StartGetData', async (req, res) => {
   try {
-    const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    // const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    const activeTimers = await StartDryingModel.find({ Status: "On-going" }).exec();
     const firstActiveTimer = activeTimers.length > 0 ? activeTimers[0] : null;
     console.log(new Date().getTime());
     
@@ -467,7 +625,8 @@ app.get('/StartGetData', async (req, res) => {
 
 app.get('/getdata', async (req, res) => {
   try {
-    const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    // const activeTimers = await StartDryingModel.find({ endTime: { $gt: new Date() } });
+    const activeTimers = await StartDryingModel.find({ Status: "On-going" }).exec();
     const firstActiveTimer = activeTimers.length > 0 ? activeTimers[0] : null;
     console.log(new Date().getTime());
     

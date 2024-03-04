@@ -21,24 +21,36 @@
                         <input type="text" name="ItemQuantity" id="ItemQuantity" class="form-control" aria-describedby="passwordHelpBlock" required>
 
                         <input type="text" name="status" value="On-going" hidden>
-                        <strong><label for="ItemName" class="form-label mt-3">Duration</label></strong>
                         
-                        <div class="text-center">
-                            <div class="row">
-                              <div class="col">
-                                <input class="form-control" type="number" name="days" id="days" placeholder="Days" require> 
-                              </div>
-                              <div class="col">
-                                <input class="form-control" type="number" name="hours" id="hours" placeholder="Hours" require>
-                              </div>
-                              <div class="col">
-                                <input class="form-control" type="number" name="minutes" id="minutes" placeholder="Minutes" require>
-                              </div>
+
+                        <!-- Selection for Manual or Automatic -->
+                        <Strong><label class="form-label mt-3">Timer Mode:</label> </Strong>
+                        <select name="TimeMode" id="TimeMode" class="form-select" onchange="TimehandleModeChange()">
+                            <option value="NOTIMER">No Timer</option>
+                            <option value="TIMER">Timer</option>
+                        </select>
+    
+                        <!-- Selection for AC Power or Battery Power (only visible when Manual is selected) -->
+                        <div id="TimeSelection" style="display: none;">
+                            <label for="ItemName" class="form-label mt-3">Duration</label>
+                        
+                            <div class="text-center">
+                                <div class="row">
+                                  <div class="col">
+                                    <input class="form-control" type="number" name="days" id="days" placeholder="Days" require> 
+                                  </div>
+                                  <div class="col">
+                                    <input class="form-control" type="number" name="hours" id="hours" placeholder="Hours" require>
+                                  </div>
+                                  <div class="col">
+                                    <input class="form-control" type="number" name="minutes" id="minutes" placeholder="Minutes" require>
+                                  </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Selection for Manual or Automatic -->
-                        <Strong><label class="form-label mt-3">Select Mode:</label> </Strong>
+                        <Strong><label class="form-label mt-3">Operation Mode:</label> </Strong>
                         <select name="modeSelect" id="modeSelect" class="form-select" onchange="handleModeChange()">
                             <option value="AUTOMATIC">Automatic</option>
                             <option value="MANUAL">Manual</option>
@@ -48,7 +60,7 @@
                         <div id="powerSelection" class="mt-3" style="display: none;">
                             <label class="form-label">Select Power Source:</label>
                             <select name="powerSourceSelect" id="powerSourceSelect" class="form-select">
-                                <option value="SOLAR">Battery Power</option>
+                                <option value="BATTERY">Battery Power</option>
                                 <option value="AC">AC Power</option>
                             </select>
                         </div>

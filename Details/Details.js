@@ -14,7 +14,7 @@ const TimerSchema = new Schema({
     },
     UserProfPic: {
         type: String,
-        required: true
+        required: false
     },
     DryingTitle: {
         type: String,
@@ -28,6 +28,10 @@ const TimerSchema = new Schema({
         type: Number,
         required: true
     },
+    TimeMode: {
+        type: String,
+        required: true
+    },
     Status: {
         type: String,
         required: true
@@ -38,9 +42,9 @@ const TimerSchema = new Schema({
     },
     endTime: {
         type: Date,
-        required: true
+        required: false
     }
-});
+}, { timestamps: true });
 
 const RelayState = new Schema ({
     DryingID: {
@@ -52,6 +56,10 @@ const RelayState = new Schema ({
         required: true
     },
     RelayState: {
+        type: String,
+        required: true
+    },
+    DehumidifierRelayState: {
         type: String,
         required: true
     }
@@ -170,6 +178,10 @@ const SensorDataSchema = new Schema({
     },
     UserProfPic: {
         type: String,
+        required: false,
+    },
+    SubmitBy: {
+        type: String,
         required: true,
     },
     DryingTitle: {
@@ -196,37 +208,21 @@ const SensorDataSchema = new Schema({
       type: Date,
       required: true,
     },
-    Temperature: {
-      type: [Number], // Array of numbers (assuming temperature is a number)
+    stopTime: {
+        type: Date,
+        required: true,
+    },
+    TimeMode: {
+      type: String,
       required: true,
+    },
+    Temperature: {
+        type: [Number],
+        required: true,
     },
     Humidity: {
-      type: [Number], // Array of numbers (assuming humidity is a number)
-      required: true,
-    },
-    LightValue: {
-      type: Number,
-      required: true,
-    },
-    Voltage: {
-      type: Number,
-      required: true,
-    },
-    ACcurrent: {
-      type: Number,
-      required: true,
-    },
-    ACvoltage: {
-      type: Number,
-      required: true,
-    },
-    ACpower: {
-      type: Number,
-      required: true,
-    },
-    totalpower: {
-      type: Number,
-      required: true,
+        type: [Number],
+        required: true,
     },
 }, { timestamps: true });
 
