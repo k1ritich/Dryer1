@@ -46,7 +46,7 @@ const mqttOptions = {
 
 const httpServer = http.createServer(app);
 const mqttClient = mqtt.connect(mqttOptions);
-const port = 3000;
+const port = 8080;
 const io = require('socket.io')(httpServer);
 const WebURL = 'dryer.pages.dev'; //const WebURL = '192.168.60.95';
 
